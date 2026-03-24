@@ -1,0 +1,9 @@
+gradio
+requests
+pillow
+pypdf
+pandas
+openpyxl
+python-pptx
+plotly
+reportlab
