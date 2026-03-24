@@ -13,7 +13,7 @@
 
 © 2026 Maegan Soria. All Rights Reserved.
 
-This software and all of its components, including but not limited to the source code, prompt engineering, analysis logic, enrollment forecasting framework, and output structure, are the exclusive intellectual property of Maegan Soria. The original source code repository has been made private to protect the intellectual property of the developer. This public repository exists solely to provide information about the tool and is not intended to grant any rights to the underlying software.
+This software and all of its components, including but not limited to the source code, prompt engineering, analysis logic, enrollment forecasting framework, and output structure, are the exclusive intellectual property of Maegan Soria. This public repository exists solely to provide information about the tool and is not intended to grant any rights to the underlying software.
 
 No permission is granted to:
 
