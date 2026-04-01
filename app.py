@@ -24,15 +24,15 @@ DISCLAIMER = """
 > All findings must be reviewed by qualified educational professionals.
 > Do not make individual student decisions based solely on AI output.
 > This platform is NOT FERPA compliant. Never upload identifiable student data.
-> Copyright 2026 Maegan Soria. All Rights Reserved. Proprietary Software.
+> © 2026 Existential Gateway, LLC. All Rights Reserved. Proprietary Software.
 """
 
 WAIT_MSG = "*Results take approximately 1-2 minutes to generate. Please do not click multiple times.*"
 
 WATERMARK = """
 ---
-Copyright 2026 Maegan Soria | AI Education Analyzer
-Unauthorized reproduction strictly prohibited. Licensing: soria.maegan@gmail.com
+© 2026 Existential Gateway, LLC | AI Education Analyzer
+Unauthorized reproduction strictly prohibited. Licensing: existentialgateway@gmail.com
 ---
 """
 
@@ -45,16 +45,12 @@ PII_WARNING = """
 
 
 def query_llm(prompt):
-    API_URL = "https://router.huggingface.co/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
-    payload = {
-        "model": "Qwen/Qwen2.5-72B-Instruct",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 2000,
-        "temperature": 0.3
-    }
+    API_KEY = os.environ.get("OPENAI_API_KEY", "")
+    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    msgs = messages if 'messages' in dir() else [{"role": "user", "content": prompt}]
+    payload = {"model": "gpt-4o-mini", "max_tokens": 2000, "messages": msgs}
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=240)
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=240)
         result = response.json()
         if "choices" in result:
             return result["choices"][0]["message"]["content"]
@@ -98,8 +94,9 @@ def analyze_overview(file):
 Content (truncated):
 {text_preview}
 
-Provide a structured overview:
-1. What type of educational document or dataset is this?
+Present your professional findings:
+1. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+ What type of educational document or dataset is this?
 2. Key metrics and data elements present
 3. Grade levels, subjects, and time period covered
 4. Summary of main findings
@@ -116,7 +113,8 @@ Assume all data has been properly de-identified per FERPA requirements."""
     missing_str = missing[missing > 0].to_string() if missing.any() else "None"
     preview = df.head(10).to_string()
 
-    prompt = f"""You are an expert education data analyst. Analyze this educational dataset:
+    prompt = f"""You are an expert education data analyst. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+ Analyze this educational dataset:
 
 Rows: {rows} | Columns: {cols}
 Column types:\n{dtypes}
@@ -152,7 +150,8 @@ def analyze_student_performance(file):
     preview = df.head(20).to_string()
     desc = df.describe(include="all").to_string()
 
-    prompt = f"""You are an expert educational data analyst and academic researcher.
+    prompt = f"""You are an expert educational data analyst and academic researcher. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+
 Analyze this de-identified student performance data:
 
 Shape: {rows} rows x {cols} columns
@@ -257,7 +256,8 @@ def analyze_dropout_retention(file):
     preview = df.head(20).to_string()
     desc = df.describe(include="all").to_string()
 
-    prompt = f"""You are an expert educational retention analyst. Analyze this enrollment and attendance data:
+    prompt = f"""You are an expert educational retention analyst. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+ Analyze this enrollment and attendance data:
 
 Shape: {rows} rows x {cols} columns
 Columns: {list(df.columns)}
@@ -351,7 +351,8 @@ def analyze_curriculum(file):
     preview = df.head(20).to_string()
     desc = df.describe(include="all").to_string()
 
-    prompt = f"""You are an expert curriculum designer and educational effectiveness analyst.
+    prompt = f"""You are an expert curriculum designer and educational effectiveness analyst. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+
 Analyze this assessment and course data:
 
 Shape: {rows} rows x {cols} columns
@@ -448,7 +449,8 @@ def analyze_enrollment(file):
     preview = df.head(20).to_string()
     desc = df.describe(include="all").to_string()
 
-    prompt = f"""You are an expert educational planning and enrollment forecasting analyst.
+    prompt = f"""You are an expert educational planning and enrollment forecasting analyst. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+
 Analyze this enrollment data:
 
 Shape: {rows} rows x {cols} columns
@@ -559,7 +561,8 @@ def analyze_resources_budget(file):
     preview = df.head(20).to_string()
     desc = df.describe(include="all").to_string()
 
-    prompt = f"""You are an expert educational finance and resource management analyst.
+    prompt = f"""You are an expert educational finance and resource management analyst. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+
 Analyze this budget and resource data:
 
 Shape: {rows} rows x {cols} columns
@@ -735,7 +738,8 @@ Produce a complete {report_type}:
 {data_summary}
 
 Structure:
-1. **Executive Summary** (3-5 sentences)
+1. Write as the professional analyst who performed this work. State all findings directly with specific numbers, percentages, and comparisons. NEVER say 'this appears to be', 'the data seems to show', 'the dataset contains', or 'it looks like'. Instead, deliver results confidently: 'Average claim cost was $4,230, a 12% increase year-over-year' or 'Readmission rates of 18.3% in Cardiology exceeded the facility average by 4.1 percentage points.' Be direct, precise, and actionable. Present findings as YOUR analysis, not a description of a dataset.
+ **Executive Summary** (3-5 sentences)
 2. **Institution Overview** — enrollment, grades, programs
 3. **Academic Performance** — key findings with numbers
 4. **Student Success and Retention** — outcomes and trends
@@ -854,7 +858,7 @@ def _make_pptx(text, df):
     p.font.bold = True
     p.font.color.rgb = RGBColor(52, 152, 219)
     p2 = tf.add_paragraph()
-    p2.text = "Copyright 2026 Maegan Soria | AI Education Analyzer"
+    p2.text = "© 2026 Existential Gateway, LLC | AI Education Analyzer"
     p2.font.size = Pt(14)
     p2.font.color.rgb = RGBColor(150, 180, 220)
 
@@ -899,7 +903,7 @@ def _make_pdf(text):
             story.append(Paragraph(safe, body_style))
     story.append(Spacer(1, 0.3 * inch))
     story.append(Paragraph(
-        "Copyright 2026 Maegan Soria | AI Education Analyzer | soria.maegan@gmail.com",
+        "© 2026 Existential Gateway, LLC | AI Education Analyzer | existentialgateway@gmail.com",
         ParagraphStyle("footer", parent=styles["Normal"], fontSize=9,
                        textColor=colors.grey)))
     doc.build(story)
@@ -947,7 +951,7 @@ def chat_with_data(message, history):
                 "You are an expert education data analyst and AI assistant specializing in "
                 "student performance, curriculum effectiveness, enrollment forecasting, "
                 "school resource management, and educational research. "
-                "Help users analyze de-identified educational data, identify trends, "
+                "When asked a question, deliver the answer immediately with specific numbers. Do NOT explain how to calculate. Analyze de-identified educational data, identify trends, "
                 "answer questions, generate SQL queries, and provide Python code when asked. "
                 "Always remind users that this tool is for administrative planning only, "
                 "individual student decisions should not be made based solely on AI output, "
@@ -962,16 +966,13 @@ def chat_with_data(message, history):
         messages.append({"role": "assistant", "content": bot_msg})
     messages.append({"role": "user", "content": message})
 
-    API_URL = "https://router.huggingface.co/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
-    payload = {
-        "model": "Qwen/Qwen2.5-72B-Instruct",
-        "messages": messages,
-        "max_tokens": 2000,
-        "temperature": 0.3
-    }
+    import os
+    API_KEY = os.environ.get("OPENAI_API_KEY", "")
+    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    msgs = messages if 'messages' in dir() else [{"role": "user", "content": prompt}]
+    payload = {"model": "gpt-4o-mini", "max_tokens": 2000, "messages": msgs}
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=240)
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=240)
         result = response.json()
         if "choices" in result:
             return result["choices"][0]["message"]["content"]
@@ -982,7 +983,62 @@ def chat_with_data(message, history):
 
 # ─── Gradio UI ────────────────────────────────────────────────────────────────
 
-with gr.Blocks(title="AI Education Analyzer", theme=gr.themes.Base()) as demo:
+with gr.Blocks(title="AI Education Analyzer", theme=gr.themes.Base(
+        primary_hue=gr.themes.colors.Color(
+            c50="#fef9ec", c100="#faefd0", c200="#f4dea0", c300="#edc970",
+            c400="#e4b04a", c500="#c9a84c", c600="#a8872e", c700="#856519",
+            c800="#5e440d", c900="#3a2a05", c950="#1e1502"
+        ),
+        secondary_hue=gr.themes.colors.Color(
+            c50="#e8edf5", c100="#c5d0e6", c200="#9eb0d4", c300="#7490c2",
+            c400="#4f74b0", c500="#2d5a9e", c600="#1a3a6e", c700="#112240",
+            c800="#0a1628", c900="#060e1a", c950="#03070d"
+        ),
+        neutral_hue=gr.themes.colors.Color(
+            c50="#f0f2f7", c100="#d8dde9", c200="#b8c2d6", c300="#95a3be",
+            c400="#7285a6", c500="#536890", c600="#3a4f73", c700="#263856",
+            c800="#162438", c900="#0c1622", c950="#060b11"
+        ),
+        font=gr.themes.GoogleFont("DM Sans"),
+        font_mono=gr.themes.GoogleFont("DM Mono"),
+    ).set(
+        body_background_fill="#0a1628",
+        body_background_fill_dark="#0a1628",
+        body_text_color="#f8f9fc",
+        body_text_color_dark="#f8f9fc",
+        block_background_fill="#112240",
+        block_background_fill_dark="#112240",
+        block_border_color="rgba(201,168,76,0.2)",
+        block_border_color_dark="rgba(201,168,76,0.2)",
+        block_label_background_fill="#112240",
+        block_label_background_fill_dark="#112240",
+        block_label_text_color="#c9a84c",
+        block_label_text_color_dark="#c9a84c",
+        block_title_text_color="#c9a84c",
+        block_title_text_color_dark="#c9a84c",
+        button_primary_background_fill="linear-gradient(135deg,#c9a84c,#e8c96a)",
+        button_primary_background_fill_dark="linear-gradient(135deg,#c9a84c,#e8c96a)",
+        button_primary_text_color="#0a1628",
+        button_primary_text_color_dark="#0a1628",
+        button_secondary_background_fill="#112240",
+        button_secondary_background_fill_dark="#112240",
+        button_secondary_border_color="rgba(201,168,76,0.3)",
+        button_secondary_border_color_dark="rgba(201,168,76,0.3)",
+        button_secondary_text_color="#c9a84c",
+        button_secondary_text_color_dark="#c9a84c",
+        input_background_fill="#0a1628",
+        input_background_fill_dark="#0a1628",
+        input_border_color="rgba(201,168,76,0.2)",
+        input_border_color_dark="rgba(201,168,76,0.2)",
+        input_placeholder_color="#8892a4",
+        input_placeholder_color_dark="#8892a4",
+        shadow_drop="0 4px 24px rgba(0,0,0,0.4)",
+        shadow_drop_lg="0 8px 40px rgba(0,0,0,0.5)",
+        table_even_background_fill="#0a1628",
+        table_even_background_fill_dark="#0a1628",
+        table_odd_background_fill="#112240",
+        table_odd_background_fill_dark="#112240",
+    )) as demo:
     gr.Markdown("# 🎓 AI Education Analyzer")
     gr.Markdown(DISCLAIMER)
 
@@ -1168,4 +1224,4 @@ with gr.Blocks(title="AI Education Analyzer", theme=gr.themes.Base()) as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
+    demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("GRADIO_SERVER_PORT", 7860)), share=False, ssr_mode=False)

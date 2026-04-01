@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Education Analyzer — QuantusData.ai</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%230a1628'/><circle cx='90' cy='88' r='72' fill='none' stroke='%23c9a84c' stroke-width='14'/><rect x='34' y='108' width='18' height='30' fill='%23c9a84c' opacity='0.6' rx='2'/><rect x='56' y='88' width='18' height='50' fill='%23c9a84c' opacity='0.8' rx='2'/><rect x='78' y='62' width='18' height='76' fill='%23c9a84c' rx='2'/><rect x='100' y='78' width='18' height='60' fill='%23c9a84c' opacity='0.8' rx='2'/><rect x='122' y='98' width='18' height='40' fill='%23c9a84c' opacity='0.6' rx='2'/><line x1='138' y1='134' x2='170' y2='168' stroke='%23c9a84c' stroke-width='14' stroke-linecap='round'/></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #0a1628; --navy-mid: #112240;
+      --gold: #c9a84c; --gold-light: #e8c96a;
+      --white: #f8f9fc; --muted: #8892a4;
+      --border: rgba(201,168,76,0.15);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; overflow:hidden; }
+    body { background:var(--navy); color:var(--white); font-family:'DM Sans',sans-serif; display:flex; flex-direction:column; }
+    body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(201,168,76,0.03) 1px,transparent 1px), linear-gradient(90deg,rgba(201,168,76,0.03) 1px,transparent 1px); background-size:60px 60px; pointer-events:none; z-index:0; }
+    nav { position:relative; z-index:100; display:flex; justify-content:space-between; align-items:center; padding:10px 32px; background:rgba(10,22,40,0.98); backdrop-filter:blur(20px); border-bottom:1px solid rgba(201,168,76,0.15); flex-shrink:0; }
+    .nav-left { display:flex; align-items:center; gap:16px; }
+    .nav-brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .nav-brand-name { font-family:'DM Serif Display',serif; font-size:1.2rem; color:#f8f9fc; }
+    .nav-brand-name span { color:#c9a84c; }
+    .nav-divider { width:1px; height:24px; background:rgba(201,168,76,0.2); }
+    .nav-tool-name { font-family:'DM Mono',monospace; font-size:0.7rem; color:#c9a84c; letter-spacing:1px; text-transform:uppercase; }
+    .nav-right { display:flex; align-items:center; gap:12px; }
+    .nav-plan { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+    .nav-back { font-size:0.8rem; color:var(--muted); text-decoration:none; padding:6px 14px; border:1px solid var(--border); border-radius:4px; transition:all 0.2s; }
+    .nav-back:hover { color:var(--gold); border-color:var(--gold); }
+    .tool-header { position:relative; z-index:1; padding:12px 32px; background:rgba(17,34,64,0.5); border-bottom:1px solid rgba(201,168,76,0.1); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .tool-header-left { display:flex; align-items:center; gap:14px; }
+    .tool-icon { font-size:1.6rem; }
+    .tool-title { font-family:'DM Serif Display',serif; font-size:1.1rem; color:var(--white); font-weight:400; }
+    .tool-tagline { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--gold); letter-spacing:2px; text-transform:uppercase; margin-top:2px; }
+    .tool-desc { font-size:0.78rem; color:var(--muted); max-width:500px; line-height:1.5; }
+    .iframe-container { flex:1; position:relative; z-index:1; overflow:hidden; }
+    iframe { width:100%; height:100%; border:none; display:block; }
+    .iframe-loading { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--navy); gap:16px; transition:opacity 0.5s; }
+    .iframe-loading.hidden { opacity:0; pointer-events:none; }
+    .loading-icon { font-size:2.5rem; animation:pulse 1.5s ease-in-out infinite; }
+    .loading-text { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--gold); letter-spacing:2px; text-transform:uppercase; }
+    @keyframes pulse { 0%,100% { opacity:0.4; transform:scale(0.95); } 50% { opacity:1; transform:scale(1.05); } }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-left">
+      <a href="https://quantusdata.ai/dashboard.html" class="nav-brand">
+        <svg width="28" height="28" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="90" cy="88" r="75" fill="none" stroke="#c9a84c" stroke-width="14"/>
+          <rect x="34" y="108" width="18" height="30" fill="#c9a84c" opacity="0.6" rx="2"/>
+          <rect x="56" y="88" width="18" height="50" fill="#c9a84c" opacity="0.8" rx="2"/>
+          <rect x="78" y="62" width="18" height="76" fill="#c9a84c" rx="2"/>
+          <rect x="100" y="78" width="18" height="60" fill="#c9a84c" opacity="0.8" rx="2"/>
+          <rect x="122" y="98" width="18" height="40" fill="#c9a84c" opacity="0.6" rx="2"/>
+          <line x1="138" y1="134" x2="170" y2="168" stroke="#c9a84c" stroke-width="14" stroke-linecap="round"/>
+        </svg>
+        <span class="nav-brand-name">Quantus<span>Data</span><span style="font-size:0.8em;">.ai</span></span>
+      </a>
+      <div class="nav-divider"></div>
+      <span class="nav-tool-name">Education Analyzer</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-plan">QuantusData Professional</span>
+      <a href="https://quantusdata.ai/dashboard.html" class="nav-back">← Dashboard</a>
+    </div>
+  </nav>
+  <div class="tool-header">
+    <div class="tool-header-left">
+      <span class="tool-icon">🎓</span>
+      <div>
+        <div class="tool-title">Education Analyzer</div>
+        <div class="tool-tagline">AI-Powered Academic Intelligence</div>
+      </div>
+    </div>
+    <div class="tool-desc">Student performance analysis, dropout risk prediction, curriculum optimization, and 4 ML models for institutional planning.</div>
+  </div>
+  <div class="iframe-container">
+    <div class="iframe-loading" id="loader">
+      <span class="loading-icon">🎓</span>
+      <span class="loading-text">Loading Education Analyzer...</span>
+    </div>
+    <iframe src="/gradio/" id="tool-frame" onload="document.getElementById('loader').classList.add('hidden')" allow="clipboard-write"></iframe>
+  </div>
+</body>
+</html>

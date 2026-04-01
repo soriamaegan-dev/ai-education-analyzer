@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(async function() {
+  const sb = supabase.createClient("https://jolvnzhwwchbkuzkeqjt.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbHZuemh3d2NoYmt1emtlcWp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MDg5NDYsImV4cCI6MjA5MDI4NDk0Nn0.gNd-q8SjDjMKBiYZtQALhqQvTsbTnQuQj9FZG4q3lIs", { auth: { persistSession: true, storageKey: "quantusdata-auth" } });
+  if (window.location.hash && window.location.hash.includes("access_token")) {
+    await sb.auth.exchangeCodeForSession(window.location.href);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) { window.location.href = "/dashboard.html"; return; }
+  const { data, error } = await sb.from("subscriptions").select("*").eq("email", session.user.email).eq("status", "active").single();
+  if (error || !data) { window.location.href = "/dashboard.html?error=no_subscription"; return; }
+  const plan = data.plan;
+  const PREMIUM_PLANS = ["professional", "business", "owner"];
+  const isPremium = PREMIUM_PLANS.includes(plan);
+  const PLAN_NAMES = { "basic": "Basic Plan — $29/mo", "professional": "Professional Plan — $79/mo", "business": "Business Plan — $199/mo", "owner": "Owner Access" };
+  const applyPlan = () => {
+    document.querySelectorAll(".nav-plan").forEach(el => { el.textContent = PLAN_NAMES[plan] || plan.toUpperCase(); });
+    if (!isPremium) {
+      const PREMIUM_KEYWORDS = ["Cleaning", "Dataset", "Chat", "Visual", "Reports"];
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        const label = btn.textContent.trim();
+        const isLocked = PREMIUM_KEYWORDS.some(k => label.includes(k));
+        if (isLocked) {
+          btn.style.opacity = "0.4"; btn.style.cursor = "not-allowed";
+          btn.title = "Upgrade to Professional to unlock";
+          btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); alert("This feature requires a Professional or Business plan. Visit quantusdata.ai to upgrade."); };
+          btn.innerHTML = "\ud83d\udd12 " + btn.innerHTML;
+        }
+      });
+    }
+  };
+  if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", applyPlan); } else { applyPlan(); }
+})();
+</script>
+
+
+
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Education Analyzer — QuantusData™.ai</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%230a1628'/><circle cx='90' cy='88' r='72' fill='none' stroke='%23c9a84c' stroke-width='14'/><rect x='34' y='108' width='18' height='30' fill='%23c9a84c' opacity='0.6' rx='2'/><rect x='56' y='88' width='18' height='50' fill='%23c9a84c' opacity='0.8' rx='2'/><rect x='78' y='62' width='18' height='76' fill='%23c9a84c' rx='2'/><rect x='100' y='78' width='18' height='60' fill='%23c9a84c' opacity='0.8' rx='2'/><rect x='122' y='98' width='18' height='40' fill='%23c9a84c' opacity='0.6' rx='2'/><line x1='138' y1='134' x2='170' y2='168' stroke='%23c9a84c' stroke-width='14' stroke-linecap='round'/></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#0a1628;--navy-mid:#112240;--gold:#c9a84c;--gold-light:#e8c96a;
+      --white:#f8f9fc;--muted:#8892a4;--border:rgba(201,168,76,0.15);
+      --success:#2dd4a0;--error:#ff6b6b;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{background:var(--navy);color:var(--white);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.7;min-height:100vh;}
+    body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(201,168,76,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,0.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;}
+    nav{position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:12px 40px;background:rgba(10,22,40,0.98);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+    .nav-left{display:flex;align-items:center;gap:16px;}
+    .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+    .nav-brand-name{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--white);}
+    .nav-brand-name span{color:var(--gold);}
+    .nav-divider{width:1px;height:22px;background:var(--border);}
+    .nav-tool{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--gold);letter-spacing:2px;text-transform:uppercase;}
+    .nav-right{display:flex;align-items:center;gap:14px;}
+    .nav-plan{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+    .nav-back{font-size:0.78rem;color:var(--muted);text-decoration:none;padding:6px 14px;border:1px solid var(--border);border-radius:4px;transition:all 0.2s;}
+    .nav-back:hover{color:var(--gold);border-color:var(--gold);}
+    .tool-header{position:relative;z-index:1;padding:20px 40px;background:rgba(17,34,64,0.6);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+    .tool-header-left{display:flex;align-items:center;gap:16px;}
+    .tool-icon{font-size:2rem;}
+    .tool-title{font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--white);font-weight:400;}
+    .tool-tagline{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--gold);letter-spacing:3px;text-transform:uppercase;margin-top:3px;}
+    .tool-desc{font-size:0.82rem;color:var(--muted);max-width:520px;line-height:1.6;}
+    .disclaimer{position:relative;z-index:1;margin:24px 40px 0;padding:14px 20px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;font-size:0.76rem;color:var(--muted);line-height:1.6;}
+    .disclaimer strong{color:var(--gold);}
+    .pii-notice{position:relative;z-index:1;margin:12px 40px 0;padding:14px 20px;background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-left:3px solid var(--error);border-radius:0 6px 6px 0;font-size:0.76rem;color:var(--muted);line-height:1.6;}
+    .pii-notice strong{color:var(--error);}
+    .tabs-container{position:relative;z-index:1;margin:24px 40px 0;}
+    .tabs-nav{display:flex;gap:2px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+    .tabs-nav::-webkit-scrollbar{display:none;}
+    .tab-btn{padding:10px 18px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;color:var(--muted);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:all 0.2s;margin-bottom:-1px;}
+    .tab-btn:hover{color:var(--white);}
+    .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);background:rgba(201,168,76,0.05);}
+    .tab-panel{display:none;padding:28px 0;}
+    .tab-panel.active{display:block;}
+    .upload-zone{border:2px dashed rgba(201,168,76,0.3);border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;background:rgba(17,34,64,0.4);position:relative;}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--gold);background:rgba(201,168,76,0.05);}
+    .upload-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+    .upload-icon{font-size:2.5rem;margin-bottom:12px;display:block;}
+    .upload-title{font-size:0.9rem;font-weight:600;color:var(--white);margin-bottom:6px;}
+    .upload-sub{font-size:0.78rem;color:var(--muted);}
+    .upload-filename{margin-top:12px;padding:8px 16px;background:rgba(201,168,76,0.1);border-radius:4px;font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--gold);display:none;}
+    .context-label{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;display:block;}
+    textarea.context-input{width:100%;min-height:80px;background:rgba(17,34,64,0.6);border:1px solid var(--border);border-radius:6px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:12px 16px;resize:vertical;transition:border-color 0.2s;}
+    textarea.context-input:focus{outline:none;border-color:var(--gold);}
+    textarea.context-input::placeholder{color:var(--muted);}
+    select.styled-select{width:100%;background:rgba(17,34,64,0.6);border:1px solid var(--border);border-radius:6px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:10px 16px;cursor:pointer;transition:border-color 0.2s;}
+    select.styled-select:focus{outline:none;border-color:var(--gold);}
+    .btn-analyze{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:var(--navy);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:700;border:none;border-radius:6px;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;}
+    .btn-analyze:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(201,168,76,0.3);}
+    .btn-analyze:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+    .results-area{margin-top:24px;background:rgba(17,34,64,0.5);border:1px solid var(--border);border-radius:8px;min-height:120px;overflow:hidden;}
+    .results-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .results-label{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--gold);letter-spacing:2px;text-transform:uppercase;}
+    .results-body{padding:20px;font-size:1.05rem;font-family:Arial,sans-serif;color:var(--white);line-height:1.8;white-space:pre-wrap;}
+    .results-body.empty{color:var(--muted);font-style:italic;}
+    .results-body::selection,.results-body *::selection{background:#c9a84c;color:#000000;}
+    .loading-bar{height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);background-size:200% 100%;animation:shimmer 1.5s infinite;display:none;}
+    .loading-bar.active{display:block;}
+    @keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+    @media(max-width:768px){.two-col{grid-template-columns:1fr;}}
+    .watermark{position:relative;z-index:1;text-align:center;padding:20px 40px;margin-top:40px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:0.65rem;color:rgba(136,146,164,0.5);letter-spacing:1px;}
+    .results-body h1,.results-body h2,.results-body h3{color:var(--gold);font-family:'DM Serif Display',serif;margin:16px 0 8px;font-weight:400;}
+    .results-body h1{font-size:1.2rem;}
+    .results-body h2{font-size:1.05rem;}
+    .results-body h3{font-size:0.95rem;}
+    .results-body strong{color:var(--white);font-weight:600;}
+    .results-body hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
+    .chat-messages{background:rgba(17,34,64,0.5);border:1px solid var(--border);border-radius:8px;padding:16px;min-height:200px;max-height:400px;overflow-y:auto;margin-bottom:16px;}
+    .chat-msg{margin-bottom:16px;}
+    .chat-msg.user .bubble{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);border-radius:8px 8px 2px 8px;padding:10px 14px;font-size:0.85rem;max-width:80%;margin-left:auto;}
+    .chat-msg.assistant .bubble{background:rgba(17,34,64,0.8);border:1px solid var(--border);border-radius:2px 8px 8px 8px;padding:10px 14px;font-size:0.85rem;max-width:90%;white-space:pre-wrap;}
+    .chat-input-row{display:flex;gap:10px;}
+    .chat-input{flex:1;background:rgba(17,34,64,0.6);border:1px solid var(--border);border-radius:6px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:10px 16px;}
+    .chat-input:focus{outline:none;border-color:var(--gold);}
+  </style>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+<nav>
+  <div class="nav-left">
+    <a href="/dashboard.html" class="nav-brand">
+      <svg width="26" height="26" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="90" cy="88" r="75" fill="none" stroke="#c9a84c" stroke-width="14"/>
+        <rect x="34" y="108" width="18" height="30" fill="#c9a84c" opacity="0.6" rx="2"/>
+        <rect x="56" y="88" width="18" height="50" fill="#c9a84c" opacity="0.8" rx="2"/>
+        <rect x="78" y="62" width="18" height="76" fill="#c9a84c" rx="2"/>
+        <rect x="100" y="78" width="18" height="60" fill="#c9a84c" opacity="0.8" rx="2"/>
+        <rect x="122" y="98" width="18" height="40" fill="#c9a84c" opacity="0.6" rx="2"/>
+        <line x1="138" y1="134" x2="170" y2="168" stroke="#c9a84c" stroke-width="14" stroke-linecap="round"/>
+      </svg>
+      <span class="nav-brand-name">Quantus<span>Data</span><span style="font-size:0.8em;">.ai</span></span>
+    </a>
+    <div class="nav-divider"></div>
+    <span class="nav-tool">Education Analyzer</span>
+  </div>
+  <div class="nav-right">
+    <span class="nav-plan">QuantusData Professional</span>
+    <a href="/dashboard.html" class="nav-back">← Dashboard</a>
+      
+  </div>
+</nav>
+
+<div class="tool-header">
+  <div class="tool-header-left">
+    <span class="tool-icon">🎓</span>
+    <div>
+      <div class="tool-title">Education Analyzer</div>
+      <div class="tool-tagline">AI-Powered Academic Intelligence</div>
+    </div>
+  </div>
+  <div class="tool-desc">Student performance analysis, dropout risk prediction, curriculum optimization, and institutional planning.</div>
+</div>
+
+<div class="disclaimer">
+  <strong>LEGAL DISCLAIMER:</strong> This tool is powered by Artificial Intelligence and is intended for informational purposes only. All results are AI-generated and should be reviewed by a qualified professional. © 2026 Existential Gateway, LLC. All Rights Reserved.
+</div>
+<div class="pii-notice">
+  <strong>DATA PRIVACY NOTICE:</strong> Before uploading any data, you MUST remove all personally identifiable information. This platform is not intended to store personal identifying information.
+</div>
+
+<div class="tabs-container">
+  <div class="tabs-wrapper">
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab(0)">📊 Data Overview</button>
+    <button class="tab-btn " onclick="switchTab(1)">🎓 Student Performance</button>
+    <button class="tab-btn " onclick="switchTab(2)">⚠️ Dropout & Retention</button>
+    <button class="tab-btn " onclick="switchTab(3)">📚 Curriculum</button>
+    <button class="tab-btn " onclick="switchTab(4)">📈 Enrollment</button>
+    <button class="tab-btn " onclick="switchTab(5)">💰 Resources & Budget</button>
+    <button class="tab-btn " onclick="switchTab(6)">📊 Visualizations</button>
+    <button class="tab-btn " onclick="switchTab(7)">📄 Reports</button>
+    <button class="tab-btn " onclick="switchTab(8)">🧹 Data Cleaning</button>
+    <button class="tab-btn" onclick="switchTab(9)">🔗 Multi-Dataset</button>
+    <button class="tab-btn" onclick="switchTab(10)">💬 AI Chat</button>
+  </div>
+  <div class="tab-panel active" id="tab-0">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-0" onclick="triggerUpload(0, event)">
+          <input type="file" id="file-0" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(0)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-0"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-0" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(0, '/analyze_overview', true)" id="btn-0">🔍 Analyze Dataset</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-0"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(0)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-0">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel " id="tab-1">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-1" onclick="triggerUpload(1, event)">
+          <input type="file" id="file-1" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(1)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-1"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-1" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(1, '/analyze_student_performance', true)" id="btn-1">🔍 Analyze Performance</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-1"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-1">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel " id="tab-2">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-2" onclick="triggerUpload(2, event)">
+          <input type="file" id="file-2" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(2)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-2"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-2" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(2, '/analyze_dropout_retention', true)" id="btn-2">🔍 Analyze Dropout Risk</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-2"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(2)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-2">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel " id="tab-3">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-3" onclick="triggerUpload(3, event)">
+          <input type="file" id="file-3" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(3)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-3"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-3" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(3, '/analyze_curriculum', true)" id="btn-3">🔍 Analyze Curriculum</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-3"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(3)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-3">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel " id="tab-4">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-4" onclick="triggerUpload(4, event)">
+          <input type="file" id="file-4" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(4)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-4"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-4" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(4, '/analyze_enrollment', true)" id="btn-4">🔍 Analyze Enrollment</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-4"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(4)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-4">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel " id="tab-5">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-5" onclick="triggerUpload(5, event)">
+          <input type="file" id="file-5" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(5)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-5"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-5" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(5, '/analyze_resources_budget', true)" id="btn-5">🔍 Analyze Resources</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-5"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(5)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-5">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel " id="tab-6">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-6" onclick="triggerUpload(6, event)">
+          <input type="file" id="file-6" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(6)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-6"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-6" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+                <div style="margin-top:16px;">
+          <label class="context-label">Chart Type</label>
+          <select class="styled-select" id="extra-6">
+            <option>Bar Chart</option><option>Line Chart</option><option>Pie Chart</option>
+            <option>Scatter Plot</option><option>Heatmap</option><option>Histogram</option>
+          </select>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(6, '/generate_viz', true)" id="btn-6">📊 Generate Chart</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-6"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(6)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-6">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel " id="tab-7">
+    <div class="two-col">
+      <div>
+                <label class="context-label">Upload Data File</label>
+        <div class="upload-zone" id="upload-7" onclick="triggerUpload(7, event)">
+          <input type="file" id="file-7" accept=".csv,.xlsx,.xls,.pdf,.json" onchange="handleFile(7)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV, Excel, PDF, JSON supported</div>
+          <div class="upload-filename" id="filename-7"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Context / Instructions</label>
+          <textarea class="context-input" id="context-7" placeholder="Add additional context or instructions..."></textarea>
+        </div>
+                <div style="margin-top:16px;">
+          <label class="context-label">Report Type</label>
+          <select class="styled-select" id="extra-7">
+            <option>Executive Summary</option><option>Full Analysis Report</option>
+            <option>Data Quality Report</option><option>Risk Report</option>
+          </select>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runAnalysis(7, '/generate_report', true)" id="btn-7">📄 Generate Report</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-7"></div>
+          <div class="results-header">
+            <span class="results-label">Results</span>
+            <button onclick="copyResults(7)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-7">Results will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- TAB 8: DATA CLEANING -->
+  <div class="tab-panel" id="tab-8">
+    <div class="two-col">
+      <div>
+        <label class="context-label">Upload Dataset to Clean</label>
+        <div class="upload-zone" id="upload-8" onclick="triggerUpload(8, event)">
+          <input type="file" id="file-8" accept=".csv,.xlsx,.xls" onchange="handleFile(8)" onclick="event.stopPropagation()">
+          <span class="upload-icon">🧹</span>
+          <div class="upload-title">Drop file here or click to upload</div>
+          <div class="upload-sub">CSV or Excel files supported</div>
+          <div class="upload-filename" id="filename-8"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Cleaning Instructions (Optional)</label>
+          <textarea class="context-input" id="context-8" placeholder="e.g. Remove duplicates, fill missing values with median, standardize date formats, remove rows where claim amount is 0..."></textarea>
+        </div>
+        <div style="margin-top:16px;">
+          <label class="context-label">Cleaning Options</label>
+          <select class="styled-select" id="extra-8">
+            <option value="full">Full Clean — Remove duplicates, fix nulls, standardize formats</option>
+            <option value="nulls">Fix Missing Values Only</option>
+            <option value="duplicates">Remove Duplicates Only</option>
+            <option value="formats">Standardize Formats Only</option>
+            <option value="outliers">Detect & Flag Outliers</option>
+            <option value="report">Data Quality Report Only</option>
+          </select>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runCleaning()" id="btn-8">🧹 Clean Dataset</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-8"></div>
+          <div class="results-header">
+            <span class="results-label">Data Cleaning Report</span>
+            <button onclick="copyResults(8)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-8">Upload a dataset and click Clean to get a data quality report and cleaning recommendations...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 9: MULTI-DATASET ANALYSIS -->
+  <div class="tab-panel" id="tab-9">
+    <div style="margin-bottom:20px;padding:16px 20px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:6px;">
+      <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--gold);">ℹ️ MULTI-DATASET ANALYSIS</span>
+      <p style="font-size:0.82rem;color:var(--muted);margin-top:6px;line-height:1.6;">Upload up to 3 related datasets and the AI will cross-reference, compare, and find patterns across all of them simultaneously. Perfect for comparing claims vs policy data, year-over-year analysis, or multi-region comparisons.</p>
+    </div>
+    <div class="two-col">
+      <div>
+        <label class="context-label">Dataset 1 (Primary)</label>
+        <div class="upload-zone" id="upload-multi-1" onclick="triggerMultiUpload(1, event)">
+          <input type="file" id="file-multi-1" accept=".csv,.xlsx,.xls" onchange="handleMultiFile(1)" onclick="event.stopPropagation()">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Primary Dataset</div>
+          <div class="upload-sub">e.g. Claims Data 2024</div>
+          <div class="upload-filename" id="filename-multi-1"></div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label class="context-label">Dataset 2</label>
+          <div class="upload-zone" id="upload-multi-2" onclick="triggerMultiUpload(2, event)">
+            <input type="file" id="file-multi-2" accept=".csv,.xlsx,.xls" onchange="handleMultiFile(2)" onclick="event.stopPropagation()">
+            <span class="upload-icon">📂</span>
+            <div class="upload-title">Second Dataset</div>
+            <div class="upload-sub">e.g. Policy Data 2024</div>
+            <div class="upload-filename" id="filename-multi-2"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label class="context-label">Dataset 3 (Optional)</label>
+          <div class="upload-zone" id="upload-multi-3" onclick="triggerMultiUpload(3, event)">
+            <input type="file" id="file-multi-3" accept=".csv,.xlsx,.xls" onchange="handleMultiFile(3)" onclick="event.stopPropagation()">
+            <span class="upload-icon">📂</span>
+            <div class="upload-title">Third Dataset (Optional)</div>
+            <div class="upload-sub">e.g. Claims Data 2023</div>
+            <div class="upload-filename" id="filename-multi-3"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label class="context-label">Analysis Instructions</label>
+          <textarea class="context-input" id="context-multi" placeholder="e.g. Compare claims frequency between 2023 and 2024, identify which policy types have the highest loss ratios, find correlations between vehicle age and claim amount..."></textarea>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label class="context-label">Analysis Type</label>
+          <select class="styled-select" id="extra-multi">
+            <option value="compare">Cross-Dataset Comparison</option>
+            <option value="correlate">Correlation Analysis</option>
+            <option value="trends">Year-over-Year Trends</option>
+            <option value="merge">Merge & Unified Analysis</option>
+            <option value="anomalies">Anomaly Detection Across Datasets</option>
+            <option value="full">Full Multi-Dataset Report</option>
+          </select>
+        </div>
+
+        <div style="margin-top:16px;">
+          <button class="btn-analyze" onclick="runMultiDataset()" id="btn-9">🔗 Analyze All Datasets</button>
+        </div>
+      </div>
+      <div>
+        <div class="results-area">
+          <div class="loading-bar" id="loading-9"></div>
+          <div class="results-header">
+            <span class="results-label">Multi-Dataset Analysis</span>
+            <button onclick="copyResults(9)" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:0.7rem;cursor:pointer;font-family:'DM Mono',monospace;">📋 Copy</button>
+          </div>
+          <div class="results-body empty" id="results-9">Upload 2-3 related datasets and click Analyze to get AI-powered cross-dataset insights...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel " id="tab-10">
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-msg assistant"><div class="bubble">👋 Hello! I'm your AI analyst. Ask me anything about your data.</div></div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" class="chat-input" id="chat-input-10" placeholder="Ask a question..." onkeydown="if(event.key==='Enter') sendChat(10, '/chat_with_data')">
+      <button class="btn-analyze" onclick="sendChat(10, '/chat_with_data')" style="padding:10px 18px;">Send</button>
+    </div>
+  </div>
+</div>
+
+<div class="watermark">© 2026 Existential Gateway, LLC · <a href="https://quantusdata.ai/terms.html" style="color:rgba(136,146,164,0.6);text-decoration:none;" target="_blank">Terms</a> · <a href="https://quantusdata.ai/privacy.html" style="color:rgba(136,146,164,0.6);text-decoration:none;" target="_blank">Privacy</a> · <a href="https://quantusdata.ai" style="color:rgba(136,146,164,0.6);text-decoration:none;" target="_blank">quantusdata.ai</a></div>
+
+<script>
+  const GRADIO_URL = '/tools/education/gradio_api';
+  const uploadedFiles = {};
+
+  function switchTab(idx) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+    document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+  }
+
+  function triggerUpload(idx, event) {
+    if (event && (event.target.tagName === 'INPUT' || event.target.closest('input'))) return;
+    const input = document.getElementById('file-' + idx);
+    if (input) { input.click(); }
+  }
+
+  function handleFile(idx) {
+    const file = document.getElementById('file-' + idx).files[0];
+    if (!file) return;
+    uploadedFiles[idx] = file;
+    const fn = document.getElementById('filename-' + idx);
+    fn.textContent = '📎 ' + file.name;
+    fn.style.display = 'block';
+  }
+
+  function setLoading(idx, on) {
+    document.getElementById('loading-' + idx).classList.toggle('active', on);
+    const btn = document.getElementById('btn-' + idx);
+    if (btn) btn.disabled = on;
+  }
+
+  function renderMarkdown(text) {
+    return text
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^---$/gm, '<hr>');
+  }
+
+  async function runAnalysis(tabIdx, endpoint, hasFile) {
+    const ctx = document.getElementById('context-' + tabIdx);
+    const context = ctx ? ctx.value.trim() : '';
+
+    if (hasFile && !uploadedFiles[tabIdx] && !context) {
+      alert('Please upload a file or enter context first.');
+      return;
+    }
+
+    setLoading(tabIdx, true);
+    const resultsEl = document.getElementById('results-' + tabIdx);
+    resultsEl.className = 'results-body';
+    resultsEl.innerHTML = '<span style="color:var(--gold);font-family:\'DM Mono\',monospace;font-size:0.75rem;">⟳ Analyzing... this may take 1-2 minutes</span>';
+
+    try {
+      let data = [];
+
+      if (hasFile && uploadedFiles[tabIdx]) {
+        const formData = new FormData();
+        formData.append('files', uploadedFiles[tabIdx]);
+        const uploadRes = await fetch(GRADIO_URL + '/upload', { method: 'POST', body: formData });
+        if (!uploadRes.ok) throw new Error('File upload failed. Status: ' + uploadRes.status);
+        const uploadData = await uploadRes.json();
+        data.push({ path: uploadData[0], orig_name: uploadedFiles[tabIdx].name, size: uploadedFiles[tabIdx].size, mime_type: uploadedFiles[tabIdx].type, meta: { "_type": "gradio.FileData" } });
+      }
+
+      // Only send context if file was also uploaded
+      if (hasFile && uploadedFiles[tabIdx] && context) data.push(context);
+      if (!hasFile && context) data.push(context);
+
+      const extraEl = document.getElementById('extra-' + tabIdx);
+      if (extraEl) data.push(extraEl.value);
+
+      const res = await fetch(GRADIO_URL + '/run' + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data })
+      });
+      if (!res.ok) throw new Error('Request failed: ' + await res.text());
+      const result = await res.json();
+      const text = result.data?.[0] || 'No results returned.';
+      resultsEl.innerHTML = renderMarkdown(typeof text === 'string' ? text : JSON.stringify(text, null, 2));
+    } catch(e) {
+      resultsEl.innerHTML = '<span style="color:var(--error);">⚠️ ' + e.message + '</span>';
+    }
+    setLoading(tabIdx, false);
+  }
+
+  function copyResults(idx) {
+    const el = document.getElementById('results-' + idx);
+    const text = el.innerText;
+    const clipItem = new ClipboardItem({ 'text/plain': new Blob([text], { type: 'text/plain' }) });
+    navigator.clipboard.write([clipItem]).then(() => alert('✅ Copied as plain text!'));
+  }
+
+  function addChatMsg(role, text) {
+    const msgs = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
+    div.innerHTML = '<div class="bubble">' + text + '</div>';
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  async function sendChat(tabIdx, endpoint) {
+    const input = document.getElementById('chat-input-' + tabIdx);
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    addChatMsg('user', msg);
+    const thinking = document.createElement('div');
+    thinking.className = 'chat-msg assistant';
+    thinking.innerHTML = '<div class="bubble" style="color:var(--gold);font-family:\'DM Mono\',monospace;font-size:0.75rem;">⟳ Analyzing...</div>';
+    document.getElementById('chat-messages').appendChild(thinking);
+    try {
+      const res = await fetch(GRADIO_URL + '/run' + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [msg, null] })
+      });
+      const result = await res.json();
+      thinking.querySelector('.bubble').innerHTML = renderMarkdown(result.data?.[0] || 'No response.');
+    } catch(e) {
+      thinking.querySelector('.bubble').innerHTML = '<span style="color:var(--error);">⚠️ ' + e.message + '</span>';
+    }
+    document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+  }
+
+  document.querySelectorAll('.upload-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('dragover');
+      const idx = zone.id.replace('upload-', '');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        uploadedFiles[idx] = file;
+        const fn = document.getElementById('filename-' + idx);
+        fn.textContent = '📎 ' + file.name;
+        fn.style.display = 'block';
+      }
+    });
+  });
+
+  const multiFiles = {};
+
+  function triggerMultiUpload(idx, event) {
+    if (event && event.target.tagName === 'INPUT') return;
+    document.getElementById('file-multi-' + idx).click();
+  }
+
+  function handleMultiFile(idx) {
+    const file = document.getElementById('file-multi-' + idx).files[0];
+    if (!file) return;
+    multiFiles[idx] = file;
+    const fn = document.getElementById('filename-multi-' + idx);
+    fn.textContent = '📎 ' + file.name;
+    fn.style.display = 'block';
+  }
+
+  async function runCleaning() {
+    if (!uploadedFiles[8]) { alert('Please upload a dataset first.'); return; }
+    setLoading(8, true);
+    const resultsEl = document.getElementById('results-8');
+    resultsEl.className = 'results-body';
+    resultsEl.innerHTML = '<span style="color:var(--gold);font-family:\'DM Mono\',monospace;font-size:0.75rem;">⟳ Analyzing data quality... this may take 1-2 minutes</span>';
+    try {
+      // Read file content
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const csvContent = e.target.result.slice(0, 8000);
+        const cleaningType = document.getElementById('extra-8').value;
+        const instructions = document.getElementById('context-8').value;
+
+        const prompt = `You are a professional data analyst. Analyze this dataset and provide a ${cleaningType} report.
+
+Dataset sample (first 8000 chars):
+${csvContent}
+
+${instructions ? 'Additional instructions: ' + instructions : ''}
+
+Please provide:
+1. **Data Quality Summary** — rows, columns, completeness score
+2. **Issues Found** — missing values, duplicates, format inconsistencies, outliers
+3. **Cleaning Recommendations** — specific steps to clean this data
+4. **Column Analysis** — data types, value ranges, anomalies per column
+5. **Cleaned Data Preview** — show what the first 5 rows would look like after cleaning
+6. **Overall Data Health Score** — rate 1-10 with explanation
+
+Format your response with clear headers and be specific about column names and row counts.`;
+
+        const API_KEY = '';  // Uses server-side proxy
+        const res = await fetch(GRADIO_URL + '/run/analyze_overview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: [{ path: await uploadFileGetPath(uploadedFiles[8]), orig_name: uploadedFiles[8].name, size: uploadedFiles[8].size, mime_type: uploadedFiles[8].type, meta: { "_type": "gradio.FileData" } }, prompt] })
+        });
+        const result = await res.json();
+        resultsEl.className = 'results-body';
+        resultsEl.innerHTML = renderMarkdown(result.data?.[0] || 'No results returned.');
+      const chartData = result.data?.[1];
+      if (chartData && chartData.type === 'plotly' && chartData.plot) {
+        const chartDiv = document.createElement('div');
+        chartDiv.style.cssText = 'margin-top:20px;border-top:1px solid rgba(201,168,76,0.15);padding-top:16px;min-height:350px;';
+        resultsEl.appendChild(chartDiv);
+        try {
+          const plotData = JSON.parse(chartData.plot);
+          plotData.layout = plotData.layout || {};
+          plotData.layout.paper_bgcolor = 'rgba(17,34,64,0)';
+          plotData.layout.plot_bgcolor = 'rgba(17,34,64,0.3)';
+          plotData.layout.font = { color: '#f8f9fc', family: 'DM Sans, sans-serif' };
+          plotData.layout.margin = plotData.layout.margin || { t:40, r:20, b:40, l:60 };
+          Plotly.newPlot(chartDiv, plotData.data, plotData.layout, { responsive: true, displayModeBar: true });
+        } catch(e) { console.warn('Chart error:', e); }
+      }
+        setLoading(8, false);
+      };
+      reader.readAsText(uploadedFiles[8]);
+    } catch(e) {
+      resultsEl.innerHTML = '<span style="color:var(--error);">⚠️ ' + e.message + '</span>';
+      setLoading(8, false);
+    }
+  }
+
+  async function uploadFileGetPath(file) {
+    const formData = new FormData();
+    formData.append('files', file);
+    const res = await fetch(GRADIO_URL + '/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    return data[0];
+  }
+
+  async function runMultiDataset() {
+    if (!multiFiles[1]) { alert('Please upload at least Dataset 1.'); return; }
+    if (!multiFiles[2]) { alert('Please upload at least Dataset 2.'); return; }
+    setLoading(9, true);
+    const resultsEl = document.getElementById('results-9');
+    resultsEl.className = 'results-body';
+    resultsEl.innerHTML = '<span style="color:var(--gold);font-family:\'DM Mono\',monospace;font-size:0.75rem;">⟳ Reading and cross-referencing datasets... this may take 2-3 minutes</span>';
+
+    try {
+      const readFile = (file) => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result.slice(0, 5000));
+        reader.readAsText(file);
+      });
+
+      const dataset1 = await readFile(multiFiles[1]);
+      const dataset2 = await readFile(multiFiles[2]);
+      const dataset3 = multiFiles[3] ? await readFile(multiFiles[3]) : null;
+      const analysisType = document.getElementById('extra-multi').value;
+      const instructions = document.getElementById('context-multi').value;
+
+      const prompt = `You are a senior data analyst. Perform a ${analysisType} across these ${dataset3 ? '3' : '2'} related datasets.
+
+**Dataset 1** (${multiFiles[1].name}):
+${dataset1}
+
+**Dataset 2** (${multiFiles[2].name}):
+${dataset2}
+
+${dataset3 ? `**Dataset 3** (${multiFiles[3].name}):
+${dataset3}` : ''}
+
+${instructions ? 'Analysis instructions: ' + instructions : ''}
+
+Please provide:
+1. **Dataset Overview** — summarize each dataset (rows, columns, key fields)
+2. **Cross-Dataset Findings** — patterns, correlations, and relationships between datasets
+3. **Key Insights** — top 5 actionable insights from comparing the datasets
+4. **Anomalies & Discrepancies** — anything unusual when comparing across datasets
+5. **Recommendations** — what actions should be taken based on this analysis
+6. **Summary Table** — create a comparison table of key metrics across datasets
+
+Be specific, use numbers from the actual data, and reference column names.`;
+
+      // Use the chat endpoint which accepts text input
+      const res = await fetch(GRADIO_URL + '/run/analyze_overview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [{ path: await uploadFileGetPath(multiFiles[1]), orig_name: multiFiles[1].name, size: multiFiles[1].size, mime_type: multiFiles[1].type, meta: { "_type": "gradio.FileData" } }, prompt] })
+      });
+      const result = await res.json();
+      resultsEl.className = 'results-body';
+      resultsEl.innerHTML = renderMarkdown(result.data?.[0] || 'No results returned.');
+      const chartData = result.data?.[1];
+      if (chartData && chartData.type === 'plotly' && chartData.plot) {
+        const chartDiv = document.createElement('div');
+        chartDiv.style.cssText = 'margin-top:20px;border-top:1px solid rgba(201,168,76,0.15);padding-top:16px;min-height:350px;';
+        resultsEl.appendChild(chartDiv);
+        try {
+          const plotData = JSON.parse(chartData.plot);
+          plotData.layout = plotData.layout || {};
+          plotData.layout.paper_bgcolor = 'rgba(17,34,64,0)';
+          plotData.layout.plot_bgcolor = 'rgba(17,34,64,0.3)';
+          plotData.layout.font = { color: '#f8f9fc', family: 'DM Sans, sans-serif' };
+          plotData.layout.margin = plotData.layout.margin || { t:40, r:20, b:40, l:60 };
+          Plotly.newPlot(chartDiv, plotData.data, plotData.layout, { responsive: true, displayModeBar: true });
+        } catch(e) { console.warn('Chart error:', e); }
+      }
+    } catch(e) {
+      resultsEl.innerHTML = '<span style="color:var(--error);">⚠️ ' + e.message + '</span>';
+    }
+    setLoading(9, false);
+  }
+
+
+</script>
+
+<!-- Report an Issue Button -->
+<div id="report-btn" onclick="document.getElementById('report-modal').style.display='flex'" style="position:fixed;bottom:24px;right:24px;z-index:999;background:rgba(17,34,64,0.95);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:#8892a4;transition:all 0.2s;backdrop-filter:blur(10px);" onmouseover="this.style.borderColor='#c9a84c';this.style.color='#f8f9fc'" onmouseout="this.style.borderColor='rgba(201,168,76,0.3)';this.style.color='#8892a4'">
+  ⚠️ Report an Issue
+</div>
+
+<!-- Report Modal -->
+<div id="report-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#112240;border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:32px;max-width:480px;width:100%;position:relative;">
+    <button onclick="document.getElementById('report-modal').style.display='none'" style="position:absolute;top:16px;right:16px;background:transparent;border:none;color:#8892a4;font-size:1.2rem;cursor:pointer;">✕</button>
+    <h3 style="font-family:'DM Serif Display',serif;font-size:1.2rem;color:#f8f9fc;font-weight:400;margin-bottom:8px;">Report an Issue</h3>
+    <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:#c9a84c;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">Help us improve QuantusData™</p>
+    <div style="margin-bottom:16px;">
+      <label style="font-family:'DM Mono',monospace;font-size:0.65rem;color:#c9a84c;letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:8px;">Issue Type</label>
+      <select id="report-type" style="width:100%;background:rgba(10,22,40,0.8);border:1px solid rgba(201,168,76,0.2);border-radius:6px;color:#f8f9fc;font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:10px 14px;">
+        <option>Tool not working correctly</option>
+        <option>Analysis results seem incorrect</option>
+        <option>File upload issue</option>
+        <option>Login / access issue</option>
+        <option>Billing issue</option>
+        <option>Feature request</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-family:'DM Mono',monospace;font-size:0.65rem;color:#c9a84c;letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:8px;">Description</label>
+      <textarea id="report-desc" placeholder="Please describe the issue in detail..." style="width:100%;min-height:120px;background:rgba(10,22,40,0.8);border:1px solid rgba(201,168,76,0.2);border-radius:6px;color:#f8f9fc;font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:12px 14px;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="submitReport()" style="flex:1;background:linear-gradient(135deg,#c9a84c,#e8c96a);color:#0a1628;border:none;border-radius:6px;padding:12px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;">Submit Report</button>
+      <button onclick="document.getElementById('report-modal').style.display='none'" style="background:transparent;border:1px solid rgba(201,168,76,0.2);color:#8892a4;border-radius:6px;padding:12px 20px;font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;">Cancel</button>
+    </div>
+    <p id="report-success" style="display:none;color:#2dd4a0;font-size:0.82rem;margin-top:12px;text-align:center;">✅ Report submitted! We'll look into this shortly.</p>
+    <p id="report-error" style="display:none;color:#ff6b6b;font-size:0.82rem;margin-top:12px;text-align:center;">⚠️ Failed to submit. Please email existentialgateway@gmail.com</p>
+  </div>
+</div>
+
+<script>
+async function submitReport() {
+  const type = document.getElementById('report-type').value;
+  const desc = document.getElementById('report-desc').value.trim();
+  if (!desc) { alert('Please describe the issue.'); return; }
+
+  const tool = document.title.split(' —')[0];
+  const email = window.userEmail || 'Unknown';
+
+  try {
+    const res = await fetch('https://formspree.io/f/xwvwlyke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tool: tool,
+        type: type,
+        description: desc,
+        user_email: email,
+        _subject: 'QuantusData Issue Report: ' + type
+      })
+    });
+
+    if (res.ok) {
+      document.getElementById('report-success').style.display = 'block';
+      document.getElementById('report-error').style.display = 'none';
+      document.getElementById('report-desc').value = '';
+      setTimeout(() => {
+        document.getElementById('report-modal').style.display = 'none';
+        document.getElementById('report-success').style.display = 'none';
+      }, 3000);
+    } else {
+      document.getElementById('report-error').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('report-error').style.display = 'block';
+  }
+}
+</script>
+
+</body>
+</html>
