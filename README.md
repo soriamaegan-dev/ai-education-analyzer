@@ -3,10 +3,6 @@
 
 ---
 
-⏱️ **IMPORTANT:** Please allow 1-2 minutes for results to generate. The AI is performing a comprehensive multi-step analysis. Do not click the Analyze button multiple times.
-
----
-
 ## ⚠️ Proprietary Software Notice
 
 © 2026 Maegan Soria. All Rights Reserved.
