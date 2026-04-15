@@ -1,8 +1,6 @@
 # AI Education Analyzer
 ### AI-Powered Educational Data Analysis for Administrators, Teachers, and Researchers
 
-🚀 **[Try the Live Demo](https://huggingface.co/spaces/Mae-Mae/ai-education-analyzer)**
-
 ---
 
 ⏱️ **IMPORTANT:** Please allow 1-2 minutes for results to generate. The AI is performing a comprehensive multi-step analysis. Do not click the Analyze button multiple times.
